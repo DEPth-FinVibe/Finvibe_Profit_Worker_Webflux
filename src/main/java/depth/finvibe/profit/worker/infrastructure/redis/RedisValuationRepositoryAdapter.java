@@ -84,6 +84,7 @@ public class RedisValuationRepositoryAdapter implements ValuationRepository {
         Timer.Sample sample = metrics.startSample();
         String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
         String updatedAtStr = Instant.now().toString();
+
         return Flux.fromIterable(valuations)
                 .flatMap(valuation -> hashPutAll(portfolioHashKey(valuation.getPortfolioId()), Map.of(
                                 "pv", String.valueOf(valuation.getPurchasedValue()),
@@ -93,8 +94,9 @@ public class RedisValuationRepositoryAdapter implements ValuationRepository {
                                 "del", "0",
                                 "ua", updatedAtStr
                         ))
-                        .then(setAdd(dirtyPortfolioValuationsKey(), String.valueOf(valuation.getPortfolioId()))), 128)
-                .then()
+                        .thenReturn(String.valueOf(valuation.getPortfolioId())), 128)
+                .collectList()
+                .flatMap(dirtyPortfolioIds -> setAddMany(dirtyPortfolioValuationsKey(), dirtyPortfolioIds))
                 .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
                         "reactive_save_portfolio_valuations",
@@ -107,6 +109,7 @@ public class RedisValuationRepositoryAdapter implements ValuationRepository {
         Timer.Sample sample = metrics.startSample();
         String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
         String updatedAtStr = Instant.now().toString();
+
         return Flux.fromIterable(valuations)
                 .flatMap(valuation -> hashPutAll(userHashKey(valuation.getUserId()), Map.of(
                                 "pv", String.valueOf(valuation.getPurchasedValue()),
@@ -115,8 +118,9 @@ public class RedisValuationRepositoryAdapter implements ValuationRepository {
                                 "pc", String.valueOf(valuation.getPortfolioCount()),
                                 "ua", updatedAtStr
                         ))
-                        .then(setAdd(dirtyUserValuationsKey(), valuation.getUserId())), 128)
-                .then()
+                        .thenReturn(valuation.getUserId()), 128)
+                .collectList()
+                .flatMap(dirtyUserIds -> setAddMany(dirtyUserValuationsKey(), dirtyUserIds))
                 .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
                         "reactive_save_user_valuations",
@@ -142,6 +146,23 @@ public class RedisValuationRepositoryAdapter implements ValuationRepository {
                 .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .then()
                 .doFinally(ignored -> metrics.recordRedisCommandDuration("set_add", result[0], sample));
+    }
+
+    private Mono<Void> setAddMany(String key, List<String> members) {
+        Timer.Sample sample = metrics.startSample();
+        String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
+
+        if (members.isEmpty()) {
+            return Mono.<Void>empty()
+                    .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
+                    .doFinally(ignored -> metrics.recordRedisCommandDuration("set_add_many", result[0], sample));
+        }
+
+        return redisTemplate.opsForSet()
+                .add(key, members.toArray(String[]::new))
+                .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
+                .then()
+                .doFinally(ignored -> metrics.recordRedisCommandDuration("set_add_many", result[0], sample));
     }
 
     private String dirtyPortfolioValuationsKey() {

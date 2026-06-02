@@ -10,6 +10,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -216,16 +218,38 @@ public class RedisPortfolioStateStore implements PortfolioStateStore {
         Timer.Sample sample = metrics.startSample();
         String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
 
-        return Flux.fromIterable(tasks)
-                .flatMap(task -> Mono.zip(
-                                getDecimal(portfolioStockQuantityKey(task.portfolioId(), task.stockId())),
-                                getDecimal(portfolioStockCurrentValueKey(task.portfolioId(), task.stockId()))
-                        )
-                        .map(tuple -> Map.entry(task.toKey(), new StockHolding(tuple.getT1(), tuple.getT2()))), 128)
-                .collectMap(Map.Entry::getKey, Map.Entry::getValue)
+        if (tasks.isEmpty()) {
+            return Mono.<Map<String, StockHolding>>just(Map.of())
+                    .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
+                    .doFinally(ignored -> metrics.recordRedisCommandDuration(
+                            "reactive_mget_stock_holdings",
+                            result[0],
+                            sample));
+        }
+
+        List<String> keys = new ArrayList<>(tasks.size() * 2);
+        for (StockHoldingKey task : tasks) {
+            keys.add(portfolioStockQuantityKey(task.portfolioId(), task.stockId()));
+            keys.add(portfolioStockCurrentValueKey(task.portfolioId(), task.stockId()));
+        }
+
+        return redisTemplate.opsForValue()
+                .multiGet(keys)
+                .map(values -> {
+                    Map<String, StockHolding> holdings = new HashMap<>(tasks.size());
+                    for (int i = 0; i < tasks.size(); i++) {
+                        String quantityValue = values.get(i * 2);
+                        String currentValue = values.get(i * 2 + 1);
+                        holdings.put(tasks.get(i).toKey(), new StockHolding(
+                                parseDecimalOrZero(quantityValue),
+                                parseDecimalOrZero(currentValue)
+                        ));
+                    }
+                    return holdings;
+                })
                 .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
-                        "reactive_get_stock_holdings",
+                        "reactive_mget_stock_holdings",
                         result[0],
                         sample));
     }
@@ -235,12 +259,26 @@ public class RedisPortfolioStateStore implements PortfolioStateStore {
         Timer.Sample sample = metrics.startSample();
         String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
 
-        return Flux.fromIterable(updates.entrySet())
-                .flatMap(entry -> redisTemplate.opsForValue().set(entry.getKey(), toPlainString(entry.getValue())), 128)
+        if (updates.isEmpty()) {
+            return Mono.<Void>empty()
+                    .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
+                    .doFinally(ignored -> metrics.recordRedisCommandDuration(
+                            "reactive_mset_stock_cvs",
+                            result[0],
+                            sample));
+        }
+
+        Map<String, String> serializedUpdates = new HashMap<>(updates.size());
+        for (Map.Entry<String, BigDecimal> entry : updates.entrySet()) {
+            serializedUpdates.put(entry.getKey(), toPlainString(entry.getValue()));
+        }
+
+        return redisTemplate.opsForValue()
+                .multiSet(serializedUpdates)
                 .then()
                 .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
-                        "reactive_set_stock_cvs",
+                        "reactive_mset_stock_cvs",
                         result[0],
                         sample));
     }
@@ -316,6 +354,13 @@ public class RedisPortfolioStateStore implements PortfolioStateStore {
         return hashGet(key, PRECISE_CURRENT_VALUE_FIELD)
                 .map(BigDecimal::new)
                 .switchIfEmpty(getHashLong(key, "cv").map(BigDecimal::valueOf));
+    }
+
+    private BigDecimal parseDecimalOrZero(String value) {
+        if (value == null) {
+            return BigDecimal.ZERO;
+        }
+        return new BigDecimal(value);
     }
 
     private Mono<Void> setDecimal(String key, BigDecimal value) {
