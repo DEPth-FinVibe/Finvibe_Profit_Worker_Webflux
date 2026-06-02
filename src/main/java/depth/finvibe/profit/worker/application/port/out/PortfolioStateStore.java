@@ -20,6 +20,14 @@ public interface PortfolioStateStore {
     Mono<List<Long>> findPortfolioIdsByStockId(Long stockId);
 
     /**
+     * 여러 종목을 보유한 포트폴리오 ID 목록을 일괄 조회한다.
+     *
+     * @param stockIds 종목 ID 목록
+     * @return stockId → 종목을 보유한 포트폴리오 ID 목록 매핑
+     */
+    Mono<Map<Long, List<Long>>> bulkFindPortfolioIdsByStockIds(List<Long> stockIds);
+
+    /**
      * 포트폴리오의 총 구매액을 조회한다.
      *
      * @param portfolioId 포트폴리오 ID

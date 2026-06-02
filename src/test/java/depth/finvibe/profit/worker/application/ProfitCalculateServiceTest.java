@@ -101,6 +101,15 @@ class ProfitCalculateServiceTest {
         }
 
         @Override
+        public Mono<Map<Long, List<Long>>> bulkFindPortfolioIdsByStockIds(List<Long> stockIds) {
+            Map<Long, List<Long>> result = new HashMap<>();
+            for (Long stockId : stockIds) {
+                result.put(stockId, portfolioIdsByStockId.getOrDefault(stockId, List.of()));
+            }
+            return Mono.just(result);
+        }
+
+        @Override
         public Mono<Long> findPurchasedValue(Long portfolioId) {
             PortfolioMetadata meta = portfolioMetadata.get(portfolioId);
             return Mono.just(meta != null ? meta.purchasedValue() : 0L);

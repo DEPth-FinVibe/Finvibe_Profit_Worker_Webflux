@@ -1,0 +1,1714 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "panels": [],
+      "title": "Workload / Error",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Worker Throughput 하락과 Last Service Duration 상승이 함께 보이면 실제 한 메시지 처리시간이 증가했을 가능성이 큽니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.3",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum(rate(profit_worker_events_consumed_total{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",event_type=~\"$event_type\"}[$interval]))",
+          "legendFormat": "메시지/초",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Worker Throughput (msg/s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.4.3",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum(increase(profit_worker_events_consumed_total{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",event_type=~\"$event_type\"}[1h])) or on() vector(0)",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Processed Last 1h (count)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.4.3",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "100 * ((sum(rate(profit_worker_events_consumed_total{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",event_type=~\"$event_type\",result=\"failure\"}[$interval])) or on() vector(0))) / clamp_min(sum(rate(profit_worker_events_consumed_total{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",event_type=~\"$event_type\"}[$interval])), 1e-9)",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Failure Rate (%)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.4.3",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "100 * ((sum(rate(profit_worker_events_consumed_total{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",event_type=~\"$event_type\",result=\"skipped\"}[$interval])) or on() vector(0))) / clamp_min(sum(rate(profit_worker_events_consumed_total{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",event_type=~\"$event_type\"}[$interval])), 1e-9)",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Skip Rate (%)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.3",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (event_type) (rate(profit_worker_events_consumed_total{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",event_type=~\"$event_type\"}[$interval]))",
+          "legendFormat": "{{event_type}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Throughput by event_type (msg/s)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "id": 6,
+      "panels": [],
+      "title": "Listener / Service",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 18
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.3",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (event_type) (rate(profit_worker_listener_duration_seconds_sum{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",event_type=~\"$event_type\"}[$interval])) / clamp_min(sum by (event_type) (rate(profit_worker_listener_duration_seconds_count{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",event_type=~\"$event_type\"}[$interval])), 1e-9)",
+          "legendFormat": "{{event_type}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Average Listener Duration (s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Worker Throughput 하락 + Last Service Duration 상승은 실제 한 메시지 처리시간 증가 가능성을 시사합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 18
+      },
+      "id": 9,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.4.3",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "max(profit_worker_listener_last_duration{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",event_type=\"stock_price_updated\",result=\"success\"}) or on() vector(0)",
+          "refId": "A"
+        }
+      ],
+      "title": "Last Listener Duration (s)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 18
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.3",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (operation) (rate(profit_worker_service_duration_seconds_sum{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=~\"$operation\"}[$interval])) / clamp_min(sum by (operation) (rate(profit_worker_service_duration_seconds_count{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=~\"$operation\"}[$interval])), 1e-9)",
+          "legendFormat": "{{operation}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Average Service Duration (s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Worker Throughput 하락 + Last Service Duration 상승은 실제 한 메시지 처리시간 증가 가능성을 시사합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 26
+      },
+      "id": 11,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "max(profit_worker_service_last_duration{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=\"stock_price_recalculation\",result=\"success\"}) or on() vector(0)",
+          "refId": "A"
+        }
+      ],
+      "title": "Last Service Duration (s)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 26
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "(sum by (operation) (rate(profit_worker_service_duration_seconds_sum{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=~\"$operation\",result=\"failure\"}[$interval])) or on() vector(0)) / clamp_min((sum by (operation) (rate(profit_worker_service_duration_seconds_count{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=~\"$operation\",result=\"failure\"}[$interval])) or on() vector(0)), 1e-9)",
+          "legendFormat": "{{operation}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Failed Service Duration (s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 26
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (event_type) (rate(profit_worker_events_consumed_total{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",event_type=~\"$event_type\",result=\"failure\"}[$interval])) or on() vector(0)",
+          "legendFormat": "{{event_type}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Failure by event_type (msg/s)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "id": 14,
+      "panels": [],
+      "title": "Recalculation Phases",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "portfolio_fanout phase 상승은 hot stock fanout 증가 가능성, user_fanout phase 상승은 user 전체 재합산 경로 병목 가능성을 시사합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 35
+      },
+      "id": 15,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "(sum by (phase) (rate(profit_worker_phase_duration_seconds_sum{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=\"stock_price_recalculation\",result=\"success\"}[$interval])) or on() vector(0)) / clamp_min((sum by (phase) (rate(profit_worker_phase_duration_seconds_count{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=\"stock_price_recalculation\",result=\"success\"}[$interval])) or on() vector(0)), 1e-9)",
+          "legendFormat": "{{phase}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Average Phase Duration (s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "reverse_index_lookup, portfolio_fanout, user_fanout 중 어느 phase가 실제 처리량 병목인지 분리해서 확인합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 35
+      },
+      "id": 16,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (phase) (rate(profit_worker_phase_duration_seconds_count{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=\"stock_price_recalculation\",result=\"success\"}[$interval])) or on() vector(0)",
+          "legendFormat": "{{phase}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Phase Throughput (ops/s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Worker Throughput 하락 + Last Service Duration 상승은 실제 한 메시지 처리시간 증가 가능성을 시사합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 35
+      },
+      "id": 17,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "max(profit_worker_service_last_duration{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=\"stock_price_recalculation\",result=\"success\"}) or on() vector(0)",
+          "refId": "A"
+        }
+      ],
+      "title": "Last Service Duration (s)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cpu"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 43
+      },
+      "id": 18,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"finvibe\",pod=~\"profit-worker(-webflux)?-.*\",container=~\"profit-worker(-webflux)?\"}[$interval]))",
+          "legendFormat": "{{pod}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Pod CPU Usage (cores)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 51
+      },
+      "id": 19,
+      "panels": [],
+      "title": "Fanout",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "portfolio_fanout phase 상승과 함께 보면 hot stock fanout 증가 여부를 빠르게 판단할 수 있습니다.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 52
+      },
+      "id": 20,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum(rate(profit_worker_affected_portfolios_sum{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=\"stock_price_recalculation\"}[$interval])) / clamp_min(sum(rate(profit_worker_affected_portfolios_count{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=\"stock_price_recalculation\"}[$interval])), 1e-9)",
+          "legendFormat": "portfolios",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Average Affected Portfolios (count/event)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "user_fanout phase 상승과 함께 보면 user 전체 재합산 경로 병목 여부를 판단할 수 있습니다.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 52
+      },
+      "id": 21,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum(rate(profit_worker_affected_users_sum{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=\"stock_price_recalculation\"}[$interval])) / clamp_min(sum(rate(profit_worker_affected_users_count{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=\"stock_price_recalculation\"}[$interval])), 1e-9)",
+          "legendFormat": "users",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Average Affected Users (count/event)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 52
+      },
+      "id": 22,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (operation) (increase(profit_worker_affected_portfolios_sum{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=~\"$operation\"}[1h]))",
+          "legendFormat": "portfolios {{operation}}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "editorMode": "code",
+          "expr": "sum by (operation) (increase(profit_worker_affected_users_sum{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=~\"$operation\"}[1h]))",
+          "legendFormat": "users {{operation}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Fanout by operation (last 1h count)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 60
+      },
+      "id": 23,
+      "panels": [],
+      "title": "Redis Hot Path",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Average Redis Operation Latency만 낮다고 안심하면 안 됩니다. wrapper 메서드 기준이므로 actual command pressure는 Redis Command Throughput를 같이 봐야 합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 61
+      },
+      "id": 24,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (operation) (rate(profit_worker_redis_operation_duration_seconds_sum{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=~\"$operation\"}[$interval])) / clamp_min(sum by (operation) (rate(profit_worker_redis_operation_duration_seconds_count{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=~\"$operation\"}[$interval])), 1e-9)",
+          "legendFormat": "{{operation}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Average Redis Operation Latency (s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 61
+      },
+      "id": 25,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (operation) (rate(profit_worker_redis_operation_duration_seconds_count{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=~\"$operation\"}[$interval]))",
+          "legendFormat": "{{operation}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Redis Operation Throughput (ops/s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 61
+      },
+      "id": 26,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (operation) (increase(profit_worker_redis_operation_duration_seconds_count{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",operation=~\"$operation\",result=\"failure\"}[1h])) or on() vector(0)",
+          "legendFormat": "{{operation}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Redis Operation Failure Count (last 1h count)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Redis Command Throughput 급증 + command latency가 낮다면 Redis가 느린 게 아니라 명령 수가 많은 구조일 가능성이 큽니다.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 69
+      },
+      "id": 27,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (command) (rate(profit_worker_redis_command_duration_seconds_count{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",result=\"success\"}[$interval])) or on() vector(0)",
+          "legendFormat": "{{command}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Redis Command Throughput (ops/s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Redis 한 번이 느린지, 혹은 명령 수가 많은지를 Redis Command Throughput과 함께 봐야 합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 69
+      },
+      "id": 28,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "(sum by (command) (rate(profit_worker_redis_command_duration_seconds_sum{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",result=\"success\"}[$interval])) or on() vector(0)) / clamp_min((sum by (command) (rate(profit_worker_redis_command_duration_seconds_count{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",result=\"success\"}[$interval])) or on() vector(0)), 1e-9)",
+          "legendFormat": "{{command}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Average Redis Command Duration (s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 69
+      },
+      "id": 29,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (command) (increase(profit_worker_redis_command_duration_seconds_count{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",result=\"failure\"}[1h])) or on() vector(0)",
+          "legendFormat": "{{command}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Redis Command Failure Count (last 1h count)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 77
+      },
+      "id": 30,
+      "panels": [],
+      "title": "Event Freshness",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "앱 레벨 freshness 참고용입니다. 절대적인 broker lag로 해석하면 안 됩니다.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 78
+      },
+      "id": 31,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum(rate(profit_worker_event_age_seconds_sum{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",event_type=\"stock_price_updated\"}[$interval])) / clamp_min(sum(rate(profit_worker_event_age_seconds_count{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",event_type=\"stock_price_updated\"}[$interval])), 1e-9)",
+          "legendFormat": "stock_price_updated",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Average Stock Price Event Age (s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "앱에서 portfolio_user timestamp를 내보낼 때만 의미 있게 보입니다.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 78
+      },
+      "id": 32,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum(rate(profit_worker_event_age_seconds_sum{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",event_type=\"portfolio_user\"}[$interval])) / clamp_min(sum(rate(profit_worker_event_age_seconds_count{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",event_type=\"portfolio_user\"}[$interval])), 1e-9)",
+          "legendFormat": "portfolio_user",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Average Portfolio User Event Age (s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 86
+      },
+      "id": 33,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "max(profit_worker_event_last_age{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",event_type=\"stock_price_updated\"}) or on() vector(0)",
+          "refId": "A"
+        }
+      ],
+      "title": "Last Stock Price Event Age (s)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 86
+      },
+      "id": 34,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "max(profit_worker_event_last_age{worker_runtime=~\"$worker_runtime\",job=~\"$job\",instance=~\"$instance\",event_type=\"portfolio_user\"}) or on() vector(0)",
+          "refId": "A"
+        }
+      ],
+      "title": "Last Portfolio User Event Age (s)",
+      "type": "stat"
+    }
+  ],
+  "preload": false,
+  "refresh": "15s",
+  "schemaVersion": 42,
+  "tags": [
+    "finvibe",
+    "profit-worker",
+    "prometheus"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "5m",
+          "value": "5m"
+        },
+        "label": "집계 구간",
+        "name": "interval",
+        "options": [],
+        "query": "1m,5m,10m,15m,30m,1h",
+        "type": "custom",
+        "valuesFormat": "csv"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": "webflux",
+          "value": "webflux"
+        },
+        "includeAll": true,
+        "label": "런타임",
+        "multi": false,
+        "name": "worker_runtime",
+        "options": [
+          {
+            "selected": true,
+            "text": "webflux",
+            "value": "webflux"
+          },
+          {
+            "selected": false,
+            "text": "mvc",
+            "value": "mvc"
+          }
+        ],
+        "query": "webflux,mvc",
+        "type": "custom",
+        "valuesFormat": "csv"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(profit_worker_events_consumed_total{worker_runtime=~\"$worker_runtime\"}, job)",
+        "includeAll": true,
+        "label": "잡",
+        "name": "job",
+        "options": [],
+        "query": {
+          "query": "label_values(profit_worker_events_consumed_total{worker_runtime=~\"$worker_runtime\"}, job)",
+          "refId": "jobVar"
+        },
+        "refresh": 2,
+        "regexApplyTo": "value",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(profit_worker_events_consumed_total{worker_runtime=~\"$worker_runtime\",job=~\"$job\"}, instance)",
+        "includeAll": true,
+        "label": "인스턴스",
+        "multi": true,
+        "name": "instance",
+        "options": [],
+        "query": {
+          "query": "label_values(profit_worker_events_consumed_total{worker_runtime=~\"$worker_runtime\",job=~\"$job\"}, instance)",
+          "refId": "instanceVar"
+        },
+        "refresh": 2,
+        "regexApplyTo": "value",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "$__all"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "includeAll": true,
+        "label": "이벤트 타입",
+        "multi": true,
+        "name": "event_type",
+        "options": [],
+        "query": "stock_price_updated,portfolio_trade,portfolio_user",
+        "type": "custom",
+        "valuesFormat": "csv"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "$__all"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "includeAll": true,
+        "label": "오퍼레이션",
+        "multi": true,
+        "name": "operation",
+        "options": [],
+        "query": "stock_price_recalculation,portfolio_cache_update,user_cache_update,portfolio_current_value,user_current_value,portfolio_valuation_save,user_valuation_save",
+        "type": "custom",
+        "valuesFormat": "csv"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Finvibe Profit Worker 관측",
+  "uid": "finvibe-profit-worker",
+  "version": 2,
+  "weekStart": ""
+}

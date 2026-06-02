@@ -105,6 +105,8 @@ class CacheUpdateServiceTest {
                     .toList());
         }
 
+        @Override public Mono<Map<Long, List<Long>>> bulkFindPortfolioIdsByStockIds(List<Long> stockIds) { return unsupported(); }
+
         @Override
         public Mono<Long> findPurchasedValue(Long portfolioId) {
             return Mono.just(purchasedValues.getOrDefault(portfolioId, 0L));

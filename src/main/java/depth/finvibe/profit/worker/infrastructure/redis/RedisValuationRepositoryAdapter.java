@@ -82,6 +82,7 @@ public class RedisValuationRepositoryAdapter implements ValuationRepository {
     @Override
     public Mono<Void> bulkSavePortfolioValuations(List<PortfolioValuation> valuations) {
         Timer.Sample sample = metrics.startSample();
+        String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
         String updatedAtStr = Instant.now().toString();
         return Flux.fromIterable(valuations)
                 .flatMap(valuation -> hashPutAll(portfolioHashKey(valuation.getPortfolioId()), Map.of(
@@ -94,15 +95,17 @@ public class RedisValuationRepositoryAdapter implements ValuationRepository {
                         ))
                         .then(setAdd(dirtyPortfolioValuationsKey(), String.valueOf(valuation.getPortfolioId()))), 128)
                 .then()
+                .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
                         "reactive_save_portfolio_valuations",
-                        ProfitWorkerMetrics.RESULT_SUCCESS,
+                        result[0],
                         sample));
     }
 
     @Override
     public Mono<Void> bulkSaveUserValuations(List<UserValuation> valuations) {
         Timer.Sample sample = metrics.startSample();
+        String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
         String updatedAtStr = Instant.now().toString();
         return Flux.fromIterable(valuations)
                 .flatMap(valuation -> hashPutAll(userHashKey(valuation.getUserId()), Map.of(
@@ -114,9 +117,10 @@ public class RedisValuationRepositoryAdapter implements ValuationRepository {
                         ))
                         .then(setAdd(dirtyUserValuationsKey(), valuation.getUserId())), 128)
                 .then()
+                .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
                         "reactive_save_user_valuations",
-                        ProfitWorkerMetrics.RESULT_SUCCESS,
+                        result[0],
                         sample));
     }
 

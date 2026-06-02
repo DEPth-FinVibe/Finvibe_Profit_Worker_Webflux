@@ -45,21 +45,24 @@ public class ProfitCalculateService implements ProfitCalculationUseCase {
             String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
 
             Timer.Sample reverseIndexSample = metrics.startSample();
-            return Mono.zip(requests.stream()
-                            .map(request -> {
-                                Long stockId = Objects.requireNonNull(request.getStockId());
-                                Long newPrice = Objects.requireNonNull(request.getNewPrice());
-                                return portfolioStateStore.findPortfolioIdsByStockId(stockId)
-                                        .map(portfolioIds -> portfolioIds.stream()
-                                                .map(portfolioId -> new PortfolioRecalculationTask(portfolioId, stockId, newPrice))
-                                                .toList());
-                            })
-                            .toList(), values -> {
+            List<Long> stockIds = new ArrayList<>();
+            Map<Long, Long> priceByStockId = new HashMap<>();
+            for (ProfitCalculationDto.ProfitCalculationRequest request : requests) {
+                Long stockId = Objects.requireNonNull(request.getStockId());
+                Long newPrice = Objects.requireNonNull(request.getNewPrice());
+                stockIds.add(stockId);
+                priceByStockId.put(stockId, newPrice);
+            }
+
+            return portfolioStateStore.bulkFindPortfolioIdsByStockIds(stockIds)
+                    .map(portfolioIdsByStockId -> {
                         List<PortfolioRecalculationTask> tasks = new ArrayList<>();
-                        for (Object value : values) {
-                            @SuppressWarnings("unchecked")
-                            List<PortfolioRecalculationTask> typed = (List<PortfolioRecalculationTask>) value;
-                            tasks.addAll(typed);
+                        for (Long stockId : stockIds) {
+                            Long newPrice = priceByStockId.get(stockId);
+                            List<Long> portfolioIds = portfolioIdsByStockId.getOrDefault(stockId, List.of());
+                            for (Long portfolioId : portfolioIds) {
+                                tasks.add(new PortfolioRecalculationTask(portfolioId, stockId, newPrice));
+                            }
                         }
                         return tasks;
                     })

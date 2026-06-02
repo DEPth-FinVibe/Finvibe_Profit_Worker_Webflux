@@ -12,7 +12,6 @@ import reactor.core.publisher.Mono;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -29,6 +28,25 @@ public class RedisPortfolioStateStore implements PortfolioStateStore {
                 .members(stockPortfoliosKey(stockId))
                 .map(Long::valueOf)
                 .collectList();
+    }
+
+    @Override
+    public Mono<Map<Long, List<Long>>> bulkFindPortfolioIdsByStockIds(List<Long> stockIds) {
+        Timer.Sample sample = metrics.startSample();
+        String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
+
+        return Flux.fromIterable(stockIds)
+                .flatMap(stockId -> redisTemplate.opsForSet()
+                        .members(stockPortfoliosKey(stockId))
+                        .map(Long::valueOf)
+                        .collectList()
+                        .map(portfolioIds -> Map.entry(stockId, portfolioIds)), 128)
+                .collectMap(Map.Entry::getKey, Map.Entry::getValue)
+                .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
+                .doFinally(ignored -> metrics.recordRedisCommandDuration(
+                        "reactive_smembers_reverse_index",
+                        result[0],
+                        sample));
     }
 
     @Override
@@ -179,20 +197,25 @@ public class RedisPortfolioStateStore implements PortfolioStateStore {
     @Override
     public Mono<Map<Long, PortfolioMetadata>> bulkFetchPortfolioMetadata(List<Long> portfolioIds) {
         Timer.Sample sample = metrics.startSample();
+        String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
+
         return Flux.fromIterable(portfolioIds)
                 .flatMap(portfolioId -> redisTemplate.opsForHash()
                         .multiGet(portfolioHashKey(portfolioId), List.of("pv", "ac", "u", "cvp", "cv"))
                         .map(fields -> Map.entry(portfolioId, parsePortfolioMetadata(fields))), 64)
                 .collectMap(Map.Entry::getKey, Map.Entry::getValue)
+                .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
                         "reactive_hmget_portfolio",
-                        ProfitWorkerMetrics.RESULT_SUCCESS,
+                        result[0],
                         sample));
     }
 
     @Override
     public Mono<Map<String, StockHolding>> bulkFetchStockHoldings(List<StockHoldingKey> tasks) {
         Timer.Sample sample = metrics.startSample();
+        String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
+
         return Flux.fromIterable(tasks)
                 .flatMap(task -> Mono.zip(
                                 getDecimal(portfolioStockQuantityKey(task.portfolioId(), task.stockId())),
@@ -200,27 +223,33 @@ public class RedisPortfolioStateStore implements PortfolioStateStore {
                         )
                         .map(tuple -> Map.entry(task.toKey(), new StockHolding(tuple.getT1(), tuple.getT2()))), 128)
                 .collectMap(Map.Entry::getKey, Map.Entry::getValue)
+                .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
                         "reactive_get_stock_holdings",
-                        ProfitWorkerMetrics.RESULT_SUCCESS,
+                        result[0],
                         sample));
     }
 
     @Override
     public Mono<Void> bulkSetStockCurrentValues(Map<String, BigDecimal> updates) {
         Timer.Sample sample = metrics.startSample();
+        String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
+
         return Flux.fromIterable(updates.entrySet())
                 .flatMap(entry -> redisTemplate.opsForValue().set(entry.getKey(), toPlainString(entry.getValue())), 128)
                 .then()
+                .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
                         "reactive_set_stock_cvs",
-                        ProfitWorkerMetrics.RESULT_SUCCESS,
+                        result[0],
                         sample));
     }
 
     @Override
     public Mono<Map<Long, BigDecimal>> bulkIncrementCurrentValues(Map<Long, BigDecimal> deltasByPortfolioId) {
         Timer.Sample sample = metrics.startSample();
+        String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
+
         return Flux.fromIterable(deltasByPortfolioId.entrySet())
                 .flatMap(entry -> hashIncrementFloat(
                                 portfolioHashKey(entry.getKey()),
@@ -229,9 +258,10 @@ public class RedisPortfolioStateStore implements PortfolioStateStore {
                         .map(BigDecimal::valueOf)
                         .map(value -> Map.entry(entry.getKey(), value)), 128)
                 .collectMap(Map.Entry::getKey, Map.Entry::getValue)
+                .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
                         "reactive_hincrbyfloat_portfolio_cv",
-                        ProfitWorkerMetrics.RESULT_SUCCESS,
+                        result[0],
                         sample));
     }
 

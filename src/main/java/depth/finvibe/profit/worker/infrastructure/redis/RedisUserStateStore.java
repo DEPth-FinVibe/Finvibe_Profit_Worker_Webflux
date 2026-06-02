@@ -103,28 +103,34 @@ public class RedisUserStateStore implements UserStateStore {
     @Override
     public Mono<Map<String, UserMetadata>> bulkFetchUserMetadata(List<String> userIds) {
         Timer.Sample sample = metrics.startSample();
+        String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
+
         return Flux.fromIterable(userIds)
                 .flatMap(userId -> redisTemplate.opsForHash()
                         .multiGet(userHashKey(userId), List.of("pv", "pc"))
                         .map(fields -> Map.entry(userId, parseUserMetadata(fields))), 64)
                 .collectMap(Map.Entry::getKey, Map.Entry::getValue)
+                .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
                         "reactive_hmget_user",
-                        ProfitWorkerMetrics.RESULT_SUCCESS,
+                        result[0],
                         sample));
     }
 
     @Override
     public Mono<Map<String, BigDecimal>> bulkIncrementCurrentValues(Map<String, BigDecimal> deltasByUserId) {
         Timer.Sample sample = metrics.startSample();
+        String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
+
         return Flux.fromIterable(deltasByUserId.entrySet())
                 .flatMap(entry -> hashIncrementFloat(userHashKey(entry.getKey()), "cvp", entry.getValue().doubleValue())
                         .map(BigDecimal::valueOf)
                         .map(value -> Map.entry(entry.getKey(), value)), 128)
                 .collectMap(Map.Entry::getKey, Map.Entry::getValue)
+                .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
                         "reactive_hincrbyfloat_user_cv",
-                        ProfitWorkerMetrics.RESULT_SUCCESS,
+                        result[0],
                         sample));
     }
 
