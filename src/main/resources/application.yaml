@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: profit-worker-webflux
+
+  main:
+    web-application-type: reactive
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: profit-worker
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      type: batch
+      concurrency: ${KAFKA_LISTENER_CONCURRENCY:3}
+    properties:
+      max.poll.records: ${KAFKA_MAX_POLL_RECORDS:50}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+
+app:
+  profit:
+    recalculation:
+      parallelism: ${PROFIT_RECALCULATION_PARALLELISM:4}
+      queue-capacity: ${PROFIT_RECALCULATION_QUEUE_CAPACITY:256}
+  kafka:
+    topics:
+      stock-price-updated: ${KAFKA_TOPIC_STOCK_PRICE_UPDATED:market.stock-price-updated.v1}
+      portfolio-trade: ${KAFKA_TOPIC_PORTFOLIO_TRADE:trade.trade-executed.v1}
+      portfolio-user: ${KAFKA_TOPIC_PORTFOLIO_USER:asset.portfolio-group-changed.v1}
