@@ -39,6 +39,9 @@
 - Tests
   - service and Kafka tests subscribe to reactive flows
   - Redis metrics tests mock reactive Redis operations
+- Metrics
+  - all Micrometer meters include the common tag `worker_runtime=webflux`
+  - existing metric names and business tags are preserved for dashboard compatibility
 
 ## Remaining performance follow-ups
 

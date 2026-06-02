@@ -54,6 +54,7 @@ class MetricsActuatorIntegrationTest {
                 .body();
 
         assertThat(response).contains("profit_worker_events_consumed_total");
+        assertThat(response).contains("worker_runtime=\"webflux\"");
         assertThat(response).contains("profit_worker_listener_duration_seconds_count");
     }
 }

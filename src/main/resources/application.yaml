@@ -30,6 +30,8 @@ management:
         include: health,prometheus
 
 app:
+  metrics:
+    worker-runtime: ${APP_METRICS_WORKER_RUNTIME:webflux}
   profit:
     recalculation:
       parallelism: ${PROFIT_RECALCULATION_PARALLELISM:4}
