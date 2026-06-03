@@ -85,8 +85,16 @@ public class RedisValuationRepositoryAdapter implements ValuationRepository {
         String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
         String updatedAtStr = Instant.now().toString();
 
+        if (valuations.isEmpty()) {
+            return Mono.<Void>empty()
+                    .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
+                    .doFinally(ignored -> metrics.recordRedisCommandDuration(
+                            "pipeline_save_portfolio_valuations", result[0], sample));
+        }
+
         return Flux.fromIterable(valuations)
-                .flatMap(valuation -> hashPutAll(portfolioHashKey(valuation.getPortfolioId()), Map.of(
+                .flatMap(valuation -> redisTemplate.opsForHash()
+                        .putAll(portfolioHashKey(valuation.getPortfolioId()), Map.of(
                                 "pv", String.valueOf(valuation.getPurchasedValue()),
                                 "cv", String.valueOf(valuation.getCurrentValue()),
                                 "pr", String.valueOf(valuation.getProfitRate()),
@@ -94,12 +102,19 @@ public class RedisValuationRepositoryAdapter implements ValuationRepository {
                                 "del", "0",
                                 "ua", updatedAtStr
                         ))
-                        .thenReturn(String.valueOf(valuation.getPortfolioId())), 128)
+                        .thenReturn(String.valueOf(valuation.getPortfolioId())), Integer.MAX_VALUE)
                 .collectList()
-                .flatMap(dirtyPortfolioIds -> setAddMany(dirtyPortfolioValuationsKey(), dirtyPortfolioIds))
+                .flatMap(dirtyPortfolioIds -> {
+                    if (dirtyPortfolioIds.isEmpty()) {
+                        return Mono.<Void>empty();
+                    }
+                    return redisTemplate.opsForSet()
+                            .add(dirtyPortfolioValuationsKey(), dirtyPortfolioIds.toArray(String[]::new))
+                            .then();
+                })
                 .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
-                        "reactive_save_portfolio_valuations",
+                        "pipeline_save_portfolio_valuations",
                         result[0],
                         sample));
     }
@@ -110,20 +125,35 @@ public class RedisValuationRepositoryAdapter implements ValuationRepository {
         String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
         String updatedAtStr = Instant.now().toString();
 
+        if (valuations.isEmpty()) {
+            return Mono.<Void>empty()
+                    .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
+                    .doFinally(ignored -> metrics.recordRedisCommandDuration(
+                            "pipeline_save_user_valuations", result[0], sample));
+        }
+
         return Flux.fromIterable(valuations)
-                .flatMap(valuation -> hashPutAll(userHashKey(valuation.getUserId()), Map.of(
+                .flatMap(valuation -> redisTemplate.opsForHash()
+                        .putAll(userHashKey(valuation.getUserId()), Map.of(
                                 "pv", String.valueOf(valuation.getPurchasedValue()),
                                 "cv", String.valueOf(valuation.getCurrentValue()),
                                 "pr", String.valueOf(valuation.getProfitRate()),
                                 "pc", String.valueOf(valuation.getPortfolioCount()),
                                 "ua", updatedAtStr
                         ))
-                        .thenReturn(valuation.getUserId()), 128)
+                        .thenReturn(valuation.getUserId()), Integer.MAX_VALUE)
                 .collectList()
-                .flatMap(dirtyUserIds -> setAddMany(dirtyUserValuationsKey(), dirtyUserIds))
+                .flatMap(dirtyUserIds -> {
+                    if (dirtyUserIds.isEmpty()) {
+                        return Mono.<Void>empty();
+                    }
+                    return redisTemplate.opsForSet()
+                            .add(dirtyUserValuationsKey(), dirtyUserIds.toArray(String[]::new))
+                            .then();
+                })
                 .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
-                        "reactive_save_user_valuations",
+                        "pipeline_save_user_valuations",
                         result[0],
                         sample));
     }

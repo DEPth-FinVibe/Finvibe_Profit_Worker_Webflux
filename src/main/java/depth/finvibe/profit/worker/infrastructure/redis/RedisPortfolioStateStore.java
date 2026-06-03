@@ -37,16 +37,23 @@ public class RedisPortfolioStateStore implements PortfolioStateStore {
         Timer.Sample sample = metrics.startSample();
         String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
 
+        if (stockIds.isEmpty()) {
+            return Mono.<Map<Long, List<Long>>>just(Map.of())
+                    .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
+                    .doFinally(ignored -> metrics.recordRedisCommandDuration(
+                            "pipeline_smembers_reverse_index", result[0], sample));
+        }
+
         return Flux.fromIterable(stockIds)
                 .flatMap(stockId -> redisTemplate.opsForSet()
                         .members(stockPortfoliosKey(stockId))
                         .map(Long::valueOf)
                         .collectList()
-                        .map(portfolioIds -> Map.entry(stockId, portfolioIds)), 128)
+                        .map(portfolioIds -> Map.entry(stockId, portfolioIds)), Integer.MAX_VALUE)
                 .collectMap(Map.Entry::getKey, Map.Entry::getValue)
                 .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
-                        "reactive_smembers_reverse_index",
+                        "pipeline_smembers_reverse_index",
                         result[0],
                         sample));
     }
@@ -201,14 +208,21 @@ public class RedisPortfolioStateStore implements PortfolioStateStore {
         Timer.Sample sample = metrics.startSample();
         String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
 
+        if (portfolioIds.isEmpty()) {
+            return Mono.<Map<Long, PortfolioMetadata>>just(Map.of())
+                    .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
+                    .doFinally(ignored -> metrics.recordRedisCommandDuration(
+                            "pipeline_hmget_portfolio", result[0], sample));
+        }
+
         return Flux.fromIterable(portfolioIds)
                 .flatMap(portfolioId -> redisTemplate.opsForHash()
                         .multiGet(portfolioHashKey(portfolioId), List.of("pv", "ac", "u", "cvp", "cv"))
-                        .map(fields -> Map.entry(portfolioId, parsePortfolioMetadata(fields))), 64)
+                        .map(fields -> Map.entry(portfolioId, parsePortfolioMetadata(fields))), Integer.MAX_VALUE)
                 .collectMap(Map.Entry::getKey, Map.Entry::getValue)
                 .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
-                        "reactive_hmget_portfolio",
+                        "pipeline_hmget_portfolio",
                         result[0],
                         sample));
     }
@@ -288,17 +302,24 @@ public class RedisPortfolioStateStore implements PortfolioStateStore {
         Timer.Sample sample = metrics.startSample();
         String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
 
+        if (deltasByPortfolioId.isEmpty()) {
+            return Mono.<Map<Long, BigDecimal>>just(Map.of())
+                    .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
+                    .doFinally(ignored -> metrics.recordRedisCommandDuration(
+                            "pipeline_hincrbyfloat_portfolio_cv", result[0], sample));
+        }
+
         return Flux.fromIterable(deltasByPortfolioId.entrySet())
-                .flatMap(entry -> hashIncrementFloat(
-                                portfolioHashKey(entry.getKey()),
-                                PRECISE_CURRENT_VALUE_FIELD,
-                                entry.getValue().doubleValue())
+                .flatMap(entry -> redisTemplate.opsForHash()
+                                .increment(portfolioHashKey(entry.getKey()),
+                                        PRECISE_CURRENT_VALUE_FIELD,
+                                        entry.getValue().doubleValue())
                         .map(BigDecimal::valueOf)
-                        .map(value -> Map.entry(entry.getKey(), value)), 128)
+                        .map(value -> Map.entry(entry.getKey(), value)), Integer.MAX_VALUE)
                 .collectMap(Map.Entry::getKey, Map.Entry::getValue)
                 .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
-                        "reactive_hincrbyfloat_portfolio_cv",
+                        "pipeline_hincrbyfloat_portfolio_cv",
                         result[0],
                         sample));
     }

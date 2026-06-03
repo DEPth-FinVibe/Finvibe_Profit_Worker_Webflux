@@ -105,14 +105,21 @@ public class RedisUserStateStore implements UserStateStore {
         Timer.Sample sample = metrics.startSample();
         String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
 
+        if (userIds.isEmpty()) {
+            return Mono.<Map<String, UserMetadata>>just(Map.of())
+                    .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
+                    .doFinally(ignored -> metrics.recordRedisCommandDuration(
+                            "pipeline_hmget_user", result[0], sample));
+        }
+
         return Flux.fromIterable(userIds)
                 .flatMap(userId -> redisTemplate.opsForHash()
                         .multiGet(userHashKey(userId), List.of("pv", "pc"))
-                        .map(fields -> Map.entry(userId, parseUserMetadata(fields))), 64)
+                        .map(fields -> Map.entry(userId, parseUserMetadata(fields))), Integer.MAX_VALUE)
                 .collectMap(Map.Entry::getKey, Map.Entry::getValue)
                 .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
-                        "reactive_hmget_user",
+                        "pipeline_hmget_user",
                         result[0],
                         sample));
     }
@@ -122,14 +129,22 @@ public class RedisUserStateStore implements UserStateStore {
         Timer.Sample sample = metrics.startSample();
         String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
 
+        if (deltasByUserId.isEmpty()) {
+            return Mono.<Map<String, BigDecimal>>just(Map.of())
+                    .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
+                    .doFinally(ignored -> metrics.recordRedisCommandDuration(
+                            "pipeline_hincrbyfloat_user_cv", result[0], sample));
+        }
+
         return Flux.fromIterable(deltasByUserId.entrySet())
-                .flatMap(entry -> hashIncrementFloat(userHashKey(entry.getKey()), "cvp", entry.getValue().doubleValue())
+                .flatMap(entry -> redisTemplate.opsForHash()
+                                .increment(userHashKey(entry.getKey()), "cvp", entry.getValue().doubleValue())
                         .map(BigDecimal::valueOf)
-                        .map(value -> Map.entry(entry.getKey(), value)), 128)
+                        .map(value -> Map.entry(entry.getKey(), value)), Integer.MAX_VALUE)
                 .collectMap(Map.Entry::getKey, Map.Entry::getValue)
                 .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
                 .doFinally(ignored -> metrics.recordRedisCommandDuration(
-                        "reactive_hincrbyfloat_user_cv",
+                        "pipeline_hincrbyfloat_user_cv",
                         result[0],
                         sample));
     }
