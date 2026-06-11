@@ -15,9 +15,6 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -28,36 +25,28 @@ public class StockPriceEventConsumer {
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
     @KafkaListener(topics = "${app.kafka.topics.stock-price-updated:market.stock-price-updated.v1}")
-    public Mono<Void> consumeStockPriceUpdatedEvents(List<String> payloads) {
+    public Mono<Void> consumeStockPriceUpdatedEvent(String payload) {
         return Mono.defer(() -> {
             Timer.Sample sample = metrics.startSample();
             String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
 
-            Map<Long, StockPriceUpdatedEvent> latestByStockId = new LinkedHashMap<>();
-            for (String payload : payloads) {
-                StockPriceUpdatedEvent event = read(payload, StockPriceUpdatedEvent.class);
-                latestByStockId.put(event.getStockId(), event);
-            }
+            StockPriceUpdatedEvent event = read(payload, StockPriceUpdatedEvent.class);
+            Instant updatedAt = event.getUpdatedAt().atZone(ZoneId.systemDefault()).toInstant();
+            metrics.recordEventAge(ProfitWorkerMetrics.EVENT_TYPE_STOCK_PRICE_UPDATED,
+                    Duration.between(updatedAt, Instant.now()));
 
-            metrics.recordBatchSize(ProfitWorkerMetrics.EVENT_TYPE_STOCK_PRICE_UPDATED, payloads.size(), latestByStockId.size());
+            ProfitCalculationDto.ProfitCalculationRequest request =
+                    ProfitCalculationDto.ProfitCalculationRequest.builder()
+                            .stockId(event.getStockId())
+                            .newPrice(toPrice(event))
+                            .timestamp(updatedAt)
+                            .build();
 
-            List<ProfitCalculationDto.ProfitCalculationRequest> requests = latestByStockId.values().stream()
-                    .map(event -> {
-                        Instant updatedAt = event.getUpdatedAt().atZone(ZoneId.systemDefault()).toInstant();
-                        metrics.recordEventAge(ProfitWorkerMetrics.EVENT_TYPE_STOCK_PRICE_UPDATED, Duration.between(updatedAt, Instant.now()));
-                        return ProfitCalculationDto.ProfitCalculationRequest.builder()
-                                .stockId(event.getStockId())
-                                .newPrice(toPrice(event))
-                                .timestamp(updatedAt)
-                                .build();
-                    })
-                    .toList();
-
-            return profitCalculationUseCase.updateProfitsByStockPriceChanges(requests)
+            return profitCalculationUseCase.updateProfitByStockPriceChange(request)
                     .doOnSuccess(ignored -> {
-                        requests.forEach(r -> metrics.recordConsumed(
+                        metrics.recordConsumed(
                                 ProfitWorkerMetrics.EVENT_TYPE_STOCK_PRICE_UPDATED,
-                                ProfitWorkerMetrics.RESULT_SUCCESS));
+                                ProfitWorkerMetrics.RESULT_SUCCESS);
                         result[0] = ProfitWorkerMetrics.RESULT_SUCCESS;
                     })
                     .doFinally(ignored -> metrics.recordListenerDuration(

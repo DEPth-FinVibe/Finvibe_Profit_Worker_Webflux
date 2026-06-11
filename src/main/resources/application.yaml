@@ -13,10 +13,7 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     listener:
-      type: batch
       concurrency: ${KAFKA_LISTENER_CONCURRENCY:3}
-    properties:
-      max.poll.records: ${KAFKA_MAX_POLL_RECORDS:50}
 
   data:
     redis:

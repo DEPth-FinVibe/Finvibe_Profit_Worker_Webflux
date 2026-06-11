@@ -11,7 +11,6 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,24 +27,22 @@ class StockPriceEventConsumerTest {
         TestMetricsFactory.MetricsFixture fixture = TestMetricsFactory.create();
         SimpleMeterRegistry registry = fixture.registry();
         StockPriceEventConsumer consumer = new StockPriceEventConsumer(profitCalculationUseCase, fixture.metrics());
-        when(profitCalculationUseCase.updateProfitsByStockPriceChanges(org.mockito.ArgumentMatchers.anyList()))
+        when(profitCalculationUseCase.updateProfitByStockPriceChange(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(Mono.empty());
 
-        consumer.consumeStockPriceUpdatedEvents(List.of("""
+        consumer.consumeStockPriceUpdatedEvent("""
                 {
                   "stockId": 123,
                   "price": 72000,
                   "updatedAt": "2026-05-13T13:00:00"
                 }
-                """)).block();
+                """).block();
 
-        ArgumentCaptor<List<ProfitCalculationDto.ProfitCalculationRequest>> captor =
+        ArgumentCaptor<ProfitCalculationDto.ProfitCalculationRequest> captor =
                 ArgumentCaptor.captor();
-        verify(profitCalculationUseCase).updateProfitsByStockPriceChanges(captor.capture());
+        verify(profitCalculationUseCase).updateProfitByStockPriceChange(captor.capture());
 
-        List<ProfitCalculationDto.ProfitCalculationRequest> requests = captor.getValue();
-        assertThat(requests).hasSize(1);
-        ProfitCalculationDto.ProfitCalculationRequest request = requests.get(0);
+        ProfitCalculationDto.ProfitCalculationRequest request = captor.getValue();
         assertThat(request.getStockId()).isEqualTo(123L);
         assertThat(request.getNewPrice()).isEqualTo(72000L);
         assertThat(request.getTimestamp()).isEqualTo(
@@ -65,51 +62,18 @@ class StockPriceEventConsumerTest {
     }
 
     @Test
-    void deduplicatesByStockId() {
-        ProfitCalculationUseCase profitCalculationUseCase = mock(ProfitCalculationUseCase.class);
-        TestMetricsFactory.MetricsFixture fixture = TestMetricsFactory.create();
-        StockPriceEventConsumer consumer = new StockPriceEventConsumer(profitCalculationUseCase, fixture.metrics());
-        when(profitCalculationUseCase.updateProfitsByStockPriceChanges(org.mockito.ArgumentMatchers.anyList()))
-                .thenReturn(Mono.empty());
-
-        consumer.consumeStockPriceUpdatedEvents(List.of(
-                """
-                {"stockId": 123, "price": 70000, "updatedAt": "2026-05-13T13:00:00"}
-                """,
-                """
-                {"stockId": 123, "price": 72000, "updatedAt": "2026-05-13T13:00:01"}
-                """,
-                """
-                {"stockId": 456, "price": 50000, "updatedAt": "2026-05-13T13:00:00"}
-                """
-        )).block();
-
-        ArgumentCaptor<List<ProfitCalculationDto.ProfitCalculationRequest>> captor =
-                ArgumentCaptor.captor();
-        verify(profitCalculationUseCase).updateProfitsByStockPriceChanges(captor.capture());
-
-        List<ProfitCalculationDto.ProfitCalculationRequest> requests = captor.getValue();
-        assertThat(requests).hasSize(2);
-        assertThat(requests).extracting(ProfitCalculationDto.ProfitCalculationRequest::getStockId)
-                .containsExactly(123L, 456L);
-        assertThat(requests).extracting(ProfitCalculationDto.ProfitCalculationRequest::getNewPrice)
-                .containsExactly(72000L, 50000L);
-    }
-
-    @Test
     void rejectsFractionalStockPrice() {
         ProfitCalculationUseCase profitCalculationUseCase = mock(ProfitCalculationUseCase.class);
         TestMetricsFactory.MetricsFixture fixture = TestMetricsFactory.create();
-        SimpleMeterRegistry registry = fixture.registry();
         StockPriceEventConsumer consumer = new StockPriceEventConsumer(profitCalculationUseCase, fixture.metrics());
 
-        assertThatThrownBy(() -> consumer.consumeStockPriceUpdatedEvents(List.of("""
+        assertThatThrownBy(() -> consumer.consumeStockPriceUpdatedEvent("""
                 {
                   "stockId": 123,
                   "price": 72000.5,
                   "updatedAt": "2026-05-13T13:00:00"
                 }
-                """)).block())
+                """).block())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("price must be an integer");
         verifyNoInteractions(profitCalculationUseCase);
@@ -119,10 +83,9 @@ class StockPriceEventConsumerTest {
     void recordsFailureMetricsForInvalidJson() {
         ProfitCalculationUseCase profitCalculationUseCase = mock(ProfitCalculationUseCase.class);
         TestMetricsFactory.MetricsFixture fixture = TestMetricsFactory.create();
-        SimpleMeterRegistry registry = fixture.registry();
         StockPriceEventConsumer consumer = new StockPriceEventConsumer(profitCalculationUseCase, fixture.metrics());
 
-        assertThatThrownBy(() -> consumer.consumeStockPriceUpdatedEvents(List.of("{not-json}")).block())
+        assertThatThrownBy(() -> consumer.consumeStockPriceUpdatedEvent("{not-json}").block())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid Kafka event payload");
     }

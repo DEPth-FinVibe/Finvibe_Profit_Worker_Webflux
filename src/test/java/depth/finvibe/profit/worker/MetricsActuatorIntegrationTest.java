@@ -15,7 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import reactor.core.publisher.Mono;
 
@@ -36,14 +36,14 @@ class MetricsActuatorIntegrationTest {
 
     @Test
     void exposesProfitWorkerMetricsOnPrometheusEndpoint() throws IOException, InterruptedException {
-        when(profitCalculationUseCase.updateProfitsByStockPriceChanges(anyList())).thenReturn(Mono.empty());
-        stockPriceEventConsumer.consumeStockPriceUpdatedEvents(java.util.List.of("""
+        when(profitCalculationUseCase.updateProfitByStockPriceChange(any())).thenReturn(Mono.empty());
+        stockPriceEventConsumer.consumeStockPriceUpdatedEvent("""
                 {
                   "stockId": 123,
                   "price": 72000,
                   "updatedAt": "2026-05-13T13:00:00"
                 }
-                """)).block();
+                """).block();
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("http://localhost:" + port + "/actuator/prometheus"))

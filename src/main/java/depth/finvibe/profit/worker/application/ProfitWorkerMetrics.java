@@ -19,13 +19,10 @@ public class ProfitWorkerMetrics {
     public static final String EVENTS_SKIPPED = "profit.worker.events.skipped";
     public static final String LISTENER_DURATION = "profit.worker.listener.duration";
     public static final String SERVICE_DURATION = "profit.worker.service.duration";
-    public static final String PHASE_DURATION = "profit.worker.phase.duration";
     public static final String REDIS_OPERATION_DURATION = "profit.worker.redis.operation.duration";
     public static final String REDIS_COMMAND_DURATION = "profit.worker.redis.command.duration";
     public static final String AFFECTED_PORTFOLIOS = "profit.worker.affected.portfolios";
     public static final String AFFECTED_USERS = "profit.worker.affected.users";
-    public static final String BATCH_SIZE = "profit.worker.batch.size";
-    public static final String BATCH_DEDUPLICATED_SIZE = "profit.worker.batch.deduplicated.size";
     public static final String EVENT_AGE = "profit.worker.event.age";
     public static final String LAST_LISTENER_DURATION = "profit.worker.listener.last.duration";
     public static final String LAST_SERVICE_DURATION = "profit.worker.service.last.duration";
@@ -35,7 +32,6 @@ public class ProfitWorkerMetrics {
     public static final String TAG_RESULT = "result";
     public static final String TAG_REASON = "reason";
     public static final String TAG_OPERATION = "operation";
-    public static final String TAG_PHASE = "phase";
     public static final String TAG_COMMAND = "command";
 
     public static final String RESULT_SUCCESS = "success";
@@ -55,9 +51,6 @@ public class ProfitWorkerMetrics {
     public static final String OPERATION_USER_CURRENT_VALUE = "user_current_value";
     public static final String OPERATION_PORTFOLIO_VALUATION_SAVE = "portfolio_valuation_save";
     public static final String OPERATION_USER_VALUATION_SAVE = "user_valuation_save";
-    public static final String PHASE_REVERSE_INDEX_LOOKUP = "reverse_index_lookup";
-    public static final String PHASE_PORTFOLIO_FANOUT = "portfolio_fanout";
-    public static final String PHASE_USER_FANOUT = "user_fanout";
 
     private final MeterRegistry meterRegistry;
     private final Map<String, AtomicLong> lastListenerDurationNanos = new ConcurrentHashMap<>();
@@ -106,14 +99,6 @@ public class ProfitWorkerMetrics {
         });
     }
 
-    public void recordPhaseDuration(String operation, String phase, String result, Timer.Sample sample) {
-        safeRecord(() -> sample.stop(Timer.builder(PHASE_DURATION)
-                .tag(TAG_OPERATION, operation)
-                .tag(TAG_PHASE, phase)
-                .tag(TAG_RESULT, result)
-                .register(meterRegistry)));
-    }
-
     public void recordRedisDuration(String operation, String result, Timer.Sample sample) {
         safeRecord(() -> sample.stop(Timer.builder(REDIS_OPERATION_DURATION)
                 .tag(TAG_OPERATION, operation)
@@ -140,19 +125,6 @@ public class ProfitWorkerMetrics {
                 .tag(TAG_OPERATION, operation)
                 .register(meterRegistry)
                 .record(count));
-    }
-
-    public void recordBatchSize(String eventType, long rawSize, long deduplicatedSize) {
-        safeRecord(() -> {
-            DistributionSummary.builder(BATCH_SIZE)
-                    .tag(TAG_EVENT_TYPE, eventType)
-                    .register(meterRegistry)
-                    .record(rawSize);
-            DistributionSummary.builder(BATCH_DEDUPLICATED_SIZE)
-                    .tag(TAG_EVENT_TYPE, eventType)
-                    .register(meterRegistry)
-                    .record(deduplicatedSize);
-        });
     }
 
     public void recordEventAge(String eventType, Duration duration) {
