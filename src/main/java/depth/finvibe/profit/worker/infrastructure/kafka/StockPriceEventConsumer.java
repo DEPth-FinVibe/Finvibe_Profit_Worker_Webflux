@@ -43,16 +43,18 @@ public class StockPriceEventConsumer {
                             .build();
 
             return profitCalculationUseCase.updateProfitByStockPriceChange(request)
-                    .doOnSuccess(ignored -> {
+                    .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
+                    .doFinally(ignored -> {
                         metrics.recordConsumed(
                                 ProfitWorkerMetrics.EVENT_TYPE_STOCK_PRICE_UPDATED,
-                                ProfitWorkerMetrics.RESULT_SUCCESS);
-                        result[0] = ProfitWorkerMetrics.RESULT_SUCCESS;
-                    })
-                    .doFinally(ignored -> metrics.recordListenerDuration(
-                            ProfitWorkerMetrics.EVENT_TYPE_STOCK_PRICE_UPDATED,
-                            result[0],
-                            sample));
+                                result[0]
+                        );
+                        metrics.recordListenerDuration(
+                                ProfitWorkerMetrics.EVENT_TYPE_STOCK_PRICE_UPDATED,
+                                result[0],
+                                sample
+                        );
+                    });
         });
     }
 

@@ -19,6 +19,7 @@ public class ProfitWorkerMetrics {
     public static final String EVENTS_SKIPPED = "profit.worker.events.skipped";
     public static final String LISTENER_DURATION = "profit.worker.listener.duration";
     public static final String SERVICE_DURATION = "profit.worker.service.duration";
+    public static final String PHASE_DURATION = "profit.worker.phase.duration";
     public static final String REDIS_OPERATION_DURATION = "profit.worker.redis.operation.duration";
     public static final String REDIS_COMMAND_DURATION = "profit.worker.redis.command.duration";
     public static final String AFFECTED_PORTFOLIOS = "profit.worker.affected.portfolios";
@@ -32,6 +33,7 @@ public class ProfitWorkerMetrics {
     public static final String TAG_RESULT = "result";
     public static final String TAG_REASON = "reason";
     public static final String TAG_OPERATION = "operation";
+    public static final String TAG_PHASE = "phase";
     public static final String TAG_COMMAND = "command";
 
     public static final String RESULT_SUCCESS = "success";
@@ -51,6 +53,9 @@ public class ProfitWorkerMetrics {
     public static final String OPERATION_USER_CURRENT_VALUE = "user_current_value";
     public static final String OPERATION_PORTFOLIO_VALUATION_SAVE = "portfolio_valuation_save";
     public static final String OPERATION_USER_VALUATION_SAVE = "user_valuation_save";
+    public static final String PHASE_REVERSE_INDEX_LOOKUP = "reverse_index_lookup";
+    public static final String PHASE_PORTFOLIO_FANOUT = "portfolio_fanout";
+    public static final String PHASE_USER_FANOUT = "user_fanout";
 
     private final MeterRegistry meterRegistry;
     private final Map<String, AtomicLong> lastListenerDurationNanos = new ConcurrentHashMap<>();
@@ -97,6 +102,27 @@ public class ProfitWorkerMetrics {
             updateLastDurationGauge(lastServiceDurationNanos, LAST_SERVICE_DURATION,
                     Tags.of(TAG_OPERATION, operation, TAG_RESULT, result), nanos);
         });
+    }
+
+    public void recordPhaseDuration(String operation, String phase, String result, Timer.Sample sample) {
+        safeRecord(() -> sample.stop(Timer.builder(PHASE_DURATION)
+                .tag(TAG_OPERATION, operation)
+                .tag(TAG_PHASE, phase)
+                .tag(TAG_RESULT, result)
+                .register(meterRegistry)));
+    }
+
+    public void recordPhaseDuration(String operation, String phase, String result, Duration duration) {
+        if (duration == null || duration.isNegative()) {
+            return;
+        }
+
+        safeRecord(() -> Timer.builder(PHASE_DURATION)
+                .tag(TAG_OPERATION, operation)
+                .tag(TAG_PHASE, phase)
+                .tag(TAG_RESULT, result)
+                .register(meterRegistry)
+                .record(duration));
     }
 
     public void recordRedisDuration(String operation, String result, Timer.Sample sample) {

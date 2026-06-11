@@ -16,6 +16,10 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.Objects;
 
 @Service
@@ -32,24 +36,76 @@ public class ProfitCalculateService implements ProfitCalculationUseCase {
         return Mono.defer(() -> {
             Timer.Sample sample = metrics.startSample();
             String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
+            Set<String> affectedUsers = ConcurrentHashMap.newKeySet();
+            AtomicLong userFanoutNanos = new AtomicLong();
 
             Long stockId = Objects.requireNonNull(request.getStockId());
             Long newPrice = Objects.requireNonNull(request.getNewPrice());
 
+            Timer.Sample reverseIndexSample = metrics.startSample();
+
             return portfolioStateStore.findPortfolioIdsByStockId(stockId)
-                    .flatMapMany(Flux::fromIterable)
-                    .flatMap(portfolioId -> recalculatePortfolio(portfolioId, stockId, newPrice),
-                            Integer.MAX_VALUE)
-                    .then()
-                    .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
-                    .doFinally(ignored -> metrics.recordServiceDuration(
-                            ProfitWorkerMetrics.OPERATION_STOCK_PRICE_RECALCULATION,
-                            result[0],
-                            sample));
+                    .flatMap(portfolioIds -> {
+                        metrics.recordPhaseDuration(
+                                ProfitWorkerMetrics.OPERATION_STOCK_PRICE_RECALCULATION,
+                                ProfitWorkerMetrics.PHASE_REVERSE_INDEX_LOOKUP,
+                                ProfitWorkerMetrics.RESULT_SUCCESS,
+                                reverseIndexSample
+                        );
+                        metrics.recordAffectedPortfolios(
+                                ProfitWorkerMetrics.OPERATION_STOCK_PRICE_RECALCULATION,
+                                portfolioIds.size()
+                        );
+
+                        Timer.Sample portfolioFanoutSample = metrics.startSample();
+
+                        return Flux.fromIterable(portfolioIds)
+                                .flatMap(portfolioId -> recalculatePortfolio(
+                                                portfolioId,
+                                                stockId,
+                                                newPrice,
+                                                affectedUsers,
+                                                userFanoutNanos
+                                        ),
+                                        Integer.MAX_VALUE)
+                                .then()
+                                .doFinally(ignored -> metrics.recordPhaseDuration(
+                                        ProfitWorkerMetrics.OPERATION_STOCK_PRICE_RECALCULATION,
+                                        ProfitWorkerMetrics.PHASE_PORTFOLIO_FANOUT,
+                                        result[0],
+                                        portfolioFanoutSample
+                                ));
+                    })
+                    .doOnSuccess(ignored -> {
+                        metrics.recordAffectedUsers(
+                                ProfitWorkerMetrics.OPERATION_STOCK_PRICE_RECALCULATION,
+                                affectedUsers.size()
+                        );
+                        result[0] = ProfitWorkerMetrics.RESULT_SUCCESS;
+                    })
+                    .doFinally(ignored -> {
+                        metrics.recordPhaseDuration(
+                                ProfitWorkerMetrics.OPERATION_STOCK_PRICE_RECALCULATION,
+                                ProfitWorkerMetrics.PHASE_USER_FANOUT,
+                                result[0],
+                                Duration.ofNanos(userFanoutNanos.get())
+                        );
+                        metrics.recordServiceDuration(
+                                ProfitWorkerMetrics.OPERATION_STOCK_PRICE_RECALCULATION,
+                                result[0],
+                                sample
+                        );
+                    });
         });
     }
 
-    private Mono<Void> recalculatePortfolio(Long portfolioId, Long stockId, Long newPrice) {
+    private Mono<Void> recalculatePortfolio(
+            Long portfolioId,
+            Long stockId,
+            Long newPrice,
+            Set<String> affectedUsers,
+            AtomicLong userFanoutNanos
+    ) {
         return portfolioStateStore.recalculateCurrentValue(portfolioId, stockId, newPrice)
                 .flatMap(update -> {
                     if (update.delta().signum() == 0) {
@@ -74,13 +130,21 @@ public class ProfitCalculateService implements ProfitCalculationUseCase {
                                         .build();
 
                                 return valuationRepository.savePortfolioValuation(valuation)
-                                        .then(recalculateUser(portfolioId, update.delta()));
+                                        .then(recalculateUser(portfolioId, update.delta(), affectedUsers, userFanoutNanos));
                             });
                 });
     }
 
-    private Mono<Void> recalculateUser(Long portfolioId, BigDecimal delta) {
+    private Mono<Void> recalculateUser(
+            Long portfolioId,
+            BigDecimal delta,
+            Set<String> affectedUsers,
+            AtomicLong userFanoutNanos
+    ) {
+        long startedAt = System.nanoTime();
+
         return userStateStore.findUserIdByPortfolioId(portfolioId)
+                .doOnNext(affectedUsers::add)
                 .flatMap(userId -> userStateStore.addCurrentValue(userId, delta)
                         .flatMap(newUserCV -> Mono.zip(
                                         userStateStore.findPurchasedValue(userId),
@@ -99,7 +163,8 @@ public class ProfitCalculateService implements ProfitCalculationUseCase {
                                             .build();
 
                                     return valuationRepository.saveUserValuation(valuation);
-                                })));
+                                })))
+                .doFinally(ignored -> userFanoutNanos.addAndGet(System.nanoTime() - startedAt));
     }
 
     private Double calculateProfitRate(Long purchasedValue, BigDecimal currentValue) {
