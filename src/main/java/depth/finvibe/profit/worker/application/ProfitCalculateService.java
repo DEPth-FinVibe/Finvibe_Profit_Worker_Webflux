@@ -3,10 +3,8 @@ package depth.finvibe.profit.worker.application;
 import depth.finvibe.profit.worker.application.port.in.ProfitCalculationUseCase;
 import depth.finvibe.profit.worker.application.port.out.PortfolioStateStore;
 import depth.finvibe.profit.worker.application.port.out.PortfolioStateStore.PortfolioCurrentValueUpdate;
-import depth.finvibe.profit.worker.application.port.out.UserStateStore;
 import depth.finvibe.profit.worker.application.port.out.ValuationRepository;
 import depth.finvibe.profit.worker.domain.PortfolioValuation;
-import depth.finvibe.profit.worker.domain.UserValuation;
 import depth.finvibe.profit.worker.dto.ProfitCalculationDto;
 import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
@@ -16,10 +14,6 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Duration;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.Objects;
 
 @Service
@@ -27,7 +21,6 @@ import java.util.Objects;
 public class ProfitCalculateService implements ProfitCalculationUseCase {
 
     private final PortfolioStateStore portfolioStateStore;
-    private final UserStateStore userStateStore;
     private final ValuationRepository valuationRepository;
     private final ProfitWorkerMetrics metrics;
 
@@ -36,8 +29,6 @@ public class ProfitCalculateService implements ProfitCalculationUseCase {
         return Mono.defer(() -> {
             Timer.Sample sample = metrics.startSample();
             String[] result = {ProfitWorkerMetrics.RESULT_FAILURE};
-            Set<String> affectedUsers = ConcurrentHashMap.newKeySet();
-            AtomicLong userFanoutNanos = new AtomicLong();
 
             Long stockId = Objects.requireNonNull(request.getStockId());
             Long newPrice = Objects.requireNonNull(request.getNewPrice());
@@ -59,13 +50,11 @@ public class ProfitCalculateService implements ProfitCalculationUseCase {
 
                         Timer.Sample portfolioFanoutSample = metrics.startSample();
 
-                        return Flux.fromIterable(portfolioIds)
-                                .flatMap(portfolioId -> recalculatePortfolio(
+                                return Flux.fromIterable(portfolioIds)
+                                        .flatMap(portfolioId -> recalculatePortfolio(
                                                 portfolioId,
                                                 stockId,
-                                                newPrice,
-                                                affectedUsers,
-                                                userFanoutNanos
+                                                newPrice
                                         ),
                                         Integer.MAX_VALUE)
                                 .then()
@@ -76,35 +65,19 @@ public class ProfitCalculateService implements ProfitCalculationUseCase {
                                         portfolioFanoutSample
                                 ));
                     })
-                    .doOnSuccess(ignored -> {
-                        metrics.recordAffectedUsers(
-                                ProfitWorkerMetrics.OPERATION_STOCK_PRICE_RECALCULATION,
-                                affectedUsers.size()
-                        );
-                        result[0] = ProfitWorkerMetrics.RESULT_SUCCESS;
-                    })
-                    .doFinally(ignored -> {
-                        metrics.recordPhaseDuration(
-                                ProfitWorkerMetrics.OPERATION_STOCK_PRICE_RECALCULATION,
-                                ProfitWorkerMetrics.PHASE_USER_FANOUT,
-                                result[0],
-                                Duration.ofNanos(userFanoutNanos.get())
-                        );
-                        metrics.recordServiceDuration(
-                                ProfitWorkerMetrics.OPERATION_STOCK_PRICE_RECALCULATION,
-                                result[0],
-                                sample
-                        );
-                    });
+                    .doOnSuccess(ignored -> result[0] = ProfitWorkerMetrics.RESULT_SUCCESS)
+                    .doFinally(ignored -> metrics.recordServiceDuration(
+                            ProfitWorkerMetrics.OPERATION_STOCK_PRICE_RECALCULATION,
+                            result[0],
+                            sample
+                    ));
         });
     }
 
     private Mono<Void> recalculatePortfolio(
             Long portfolioId,
             Long stockId,
-            Long newPrice,
-            Set<String> affectedUsers,
-            AtomicLong userFanoutNanos
+            Long newPrice
     ) {
         return portfolioStateStore.recalculateCurrentValue(portfolioId, stockId, newPrice)
                 .flatMap(update -> {
@@ -129,42 +102,9 @@ public class ProfitCalculateService implements ProfitCalculationUseCase {
                                         .assetCount(assetCount)
                                         .build();
 
-                                return valuationRepository.savePortfolioValuation(valuation)
-                                        .then(recalculateUser(portfolioId, update.delta(), affectedUsers, userFanoutNanos));
+                                return valuationRepository.savePortfolioValuation(valuation);
                             });
                 });
-    }
-
-    private Mono<Void> recalculateUser(
-            Long portfolioId,
-            BigDecimal delta,
-            Set<String> affectedUsers,
-            AtomicLong userFanoutNanos
-    ) {
-        long startedAt = System.nanoTime();
-
-        return userStateStore.findUserIdByPortfolioId(portfolioId)
-                .doOnNext(affectedUsers::add)
-                .flatMap(userId -> userStateStore.addCurrentValue(userId, delta)
-                        .flatMap(newUserCV -> Mono.zip(
-                                        userStateStore.findPurchasedValue(userId),
-                                        userStateStore.findPortfolioCount(userId)
-                                )
-                                .flatMap(tuple -> {
-                                    Long purchasedValue = tuple.getT1();
-                                    Long portfolioCount = tuple.getT2();
-
-                                    UserValuation valuation = UserValuation.builder()
-                                            .userId(userId)
-                                            .purchasedValue(purchasedValue)
-                                            .currentValue(roundToLong(newUserCV))
-                                            .profitRate(calculateProfitRate(purchasedValue, newUserCV))
-                                            .portfolioCount(portfolioCount)
-                                            .build();
-
-                                    return valuationRepository.saveUserValuation(valuation);
-                                })))
-                .doFinally(ignored -> userFanoutNanos.addAndGet(System.nanoTime() - startedAt));
     }
 
     private Double calculateProfitRate(Long purchasedValue, BigDecimal currentValue) {

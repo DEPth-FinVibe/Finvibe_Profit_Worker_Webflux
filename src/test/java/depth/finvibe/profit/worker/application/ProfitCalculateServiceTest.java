@@ -4,7 +4,6 @@ import depth.finvibe.profit.worker.application.port.out.PortfolioStateStore;
 import depth.finvibe.profit.worker.application.port.out.UserStateStore;
 import depth.finvibe.profit.worker.application.port.out.ValuationRepository;
 import depth.finvibe.profit.worker.domain.PortfolioValuation;
-import depth.finvibe.profit.worker.domain.UserValuation;
 import depth.finvibe.profit.worker.dto.ProfitCalculationDto;
 import depth.finvibe.profit.worker.support.TestMetricsFactory;
 import org.junit.jupiter.api.Test;
@@ -15,21 +14,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ProfitCalculateServiceTest {
 
     @Test
-    void updatesPortfolioAndUserValuationByStockPriceChange() {
+    void updatesPortfolioValuationByStockPriceChange() {
         TestMetricsFactory.MetricsFixture fixture = TestMetricsFactory.create();
         FakeValuationRepository valuationRepository = new FakeValuationRepository();
         FakePortfolioStateStore portfolioStateStore = new FakePortfolioStateStore();
         FakeUserStateStore userStateStore = new FakeUserStateStore();
         ProfitCalculateService service = new ProfitCalculateService(
                 portfolioStateStore,
-                userStateStore,
                 valuationRepository,
                 fixture.metrics()
         );
@@ -51,13 +47,6 @@ class ProfitCalculateServiceTest {
         portfolioStateStore.stockCurrentValues.put("2:10", new BigDecimal("600"));
         portfolioStateStore.portfolioCurrentValues.put(2L, new BigDecimal("1000"));
 
-        // 유저 "100": 포트폴리오 1, 2 소유
-        userStateStore.userIdByPortfolioId.put(1L, "100");
-        userStateStore.userIdByPortfolioId.put(2L, "100");
-        userStateStore.currentValues.put("100", new BigDecimal("2000"));
-        userStateStore.purchasedValues.put("100", 2_000L);
-        userStateStore.portfolioCounts.put("100", 2L);
-
         service.updateProfitByStockPriceChange(ProfitCalculationDto.ProfitCalculationRequest.builder()
                 .stockId(10L)
                 .newPrice(150L)
@@ -72,12 +61,7 @@ class ProfitCalculateServiceTest {
         // delta = 150*2 - 600 = -300. But we need to check: newPrice=150, quantity=2 → newStockCV = 300, oldStockCV = 600, delta = 300 - 600 = -300
         // portfolioCV = 1000 + (-300) = 700
         assertThat(secondPortfolio.getProfitRate()).isEqualTo(-30.0);
-
-        UserValuation userValuation = valuationRepository.userValuations.get("100");
-        // user delta = portfolio1 delta + portfolio2 delta = 500 + (-300) = 200
-        // userCV = 2000 + 200 = 2200
-        assertThat(userValuation.getCurrentValue()).isEqualTo(2_200L);
-        assertThat(userValuation.getProfitRate()).isEqualTo(10.0);
+        assertThat(valuationRepository.userValuations).isEmpty();
     }
 
     @Test
@@ -88,7 +72,6 @@ class ProfitCalculateServiceTest {
         FakeUserStateStore userStateStore = new FakeUserStateStore();
         ProfitCalculateService service = new ProfitCalculateService(
                 portfolioStateStore,
-                userStateStore,
                 valuationRepository,
                 fixture.metrics()
         );
@@ -108,9 +91,9 @@ class ProfitCalculateServiceTest {
         final Map<Long, List<Long>> portfolioIdsByStockId = new HashMap<>();
         final Map<Long, Long> purchasedValues = new HashMap<>();
         final Map<Long, Long> assetCounts = new HashMap<>();
-        final Map<Long, BigDecimal> portfolioCurrentValues = new ConcurrentHashMap<>();
+        final Map<Long, BigDecimal> portfolioCurrentValues = new java.util.concurrent.ConcurrentHashMap<>();
         final Map<String, BigDecimal> quantities = new HashMap<>();
-        final Map<String, BigDecimal> stockCurrentValues = new ConcurrentHashMap<>();
+        final Map<String, BigDecimal> stockCurrentValues = new java.util.concurrent.ConcurrentHashMap<>();
 
         @Override
         public Mono<List<Long>> findPortfolioIdsByStockId(Long stockId) {
@@ -181,7 +164,7 @@ class ProfitCalculateServiceTest {
 
     private static class FakeUserStateStore implements UserStateStore {
         final Map<Long, String> userIdByPortfolioId = new HashMap<>();
-        final Map<String, BigDecimal> currentValues = new ConcurrentHashMap<>();
+        final Map<String, BigDecimal> currentValues = new java.util.concurrent.ConcurrentHashMap<>();
         final Map<String, Long> purchasedValues = new HashMap<>();
         final Map<String, Long> portfolioCounts = new HashMap<>();
 
@@ -229,8 +212,8 @@ class ProfitCalculateServiceTest {
     }
 
     private static class FakeValuationRepository implements ValuationRepository {
-        final Map<Long, PortfolioValuation> portfolioValuations = new ConcurrentHashMap<>();
-        final Map<String, UserValuation> userValuations = new ConcurrentHashMap<>();
+        final Map<Long, PortfolioValuation> portfolioValuations = new java.util.concurrent.ConcurrentHashMap<>();
+        final Map<String, depth.finvibe.profit.worker.domain.UserValuation> userValuations = new java.util.concurrent.ConcurrentHashMap<>();
 
         @Override
         public Mono<Void> savePortfolioValuation(PortfolioValuation valuation) {
@@ -243,7 +226,7 @@ class ProfitCalculateServiceTest {
         }
 
         @Override
-        public Mono<Void> saveUserValuation(UserValuation valuation) {
+        public Mono<Void> saveUserValuation(depth.finvibe.profit.worker.domain.UserValuation valuation) {
             return Mono.fromRunnable(() -> userValuations.put(valuation.getUserId(), valuation));
         }
 
@@ -253,7 +236,7 @@ class ProfitCalculateServiceTest {
         }
 
         @Override
-        public Mono<Void> bulkSaveUserValuations(List<UserValuation> valuations) {
+        public Mono<Void> bulkSaveUserValuations(List<depth.finvibe.profit.worker.domain.UserValuation> valuations) {
             return Mono.fromRunnable(() -> valuations.forEach(v -> userValuations.put(v.getUserId(), v)));
         }
     }

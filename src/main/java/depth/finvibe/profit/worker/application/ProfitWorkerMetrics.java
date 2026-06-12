@@ -55,7 +55,6 @@ public class ProfitWorkerMetrics {
     public static final String OPERATION_USER_VALUATION_SAVE = "user_valuation_save";
     public static final String PHASE_REVERSE_INDEX_LOOKUP = "reverse_index_lookup";
     public static final String PHASE_PORTFOLIO_FANOUT = "portfolio_fanout";
-    public static final String PHASE_USER_FANOUT = "user_fanout";
 
     private final MeterRegistry meterRegistry;
     private final Map<String, AtomicLong> lastListenerDurationNanos = new ConcurrentHashMap<>();
